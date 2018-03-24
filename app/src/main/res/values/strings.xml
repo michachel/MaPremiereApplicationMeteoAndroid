@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">MonApplicationMeteo</string>
+    <string translatable="false" name="api_key_weathermap">edf3143d500679f3e737ec9331d2104f</string>
+    <string-array name="array_cities">
+        <item>aaaaaaaaaaaaaaaa</item>
+        <item>bbbbbbbbbbbbbbbb</item>
+        <item>Cepet</item>
+        <item>Rodez</item>
+        <item>Sydney</item>
+        <item>Toulouse</item>
+    </string-array>
+</resources>
