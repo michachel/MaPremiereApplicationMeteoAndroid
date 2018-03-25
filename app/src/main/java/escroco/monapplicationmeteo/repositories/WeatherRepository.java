@@ -12,9 +12,11 @@ import io.reactivex.Maybe;
 import io.reactivex.MaybeEmitter;
 import io.reactivex.MaybeObserver;
 import io.reactivex.MaybeOnSubscribe;
+import io.reactivex.MaybeSource;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Action;
 import io.reactivex.functions.Consumer;
+import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
 
 /**
@@ -59,60 +61,19 @@ public class WeatherRepository {
         _weatherCache = new WeatherCacheDataSource();
     }
 
-    private Maybe<Weather> GetWeatherNetwork(final String city){
-        _weatherNetwork.getWeather(city).
-    }
-
-    public Maybe<Weather> getWeather(final String city){
-
-        final Flowable<Weather> concat = Maybe.concat(_weatherCache.getWeather(city), _weatherNetwork.getWeather(city));
-
-
-        return Maybe.create(new MaybeOnSubscribe<Weather>() {
-            @Override
-            public void subscribe(final MaybeEmitter<Weather> emitter) throws Exception {
-                _weatherCache.getWeather(city)
-                        .subscribeOn(Schedulers.computation())
-                        .observeOn(Schedulers.computation())
-                        .subscribe(new Consumer<Weather>() {
-                                       @Override
-                                       public void accept(Weather weather) throws Exception {
-                                           emitter.onSuccess(weather);
-                                       }
-                                   },
-                                new Consumer<Throwable>() {
-                                    @Override
-                                    public void accept(Throwable throwable) throws Exception {
-                                        emitter.onError(throwable);
-                                    }
-                                }, new Action() {
-                                    @Override
-                                    public void run() throws Exception {
-                                        _weatherNetwork.getWeather(city)
-                                                .subscribeOn(Schedulers.computation())
-                                                .observeOn(Schedulers.computation())
-                                                .subscribe(new Consumer<Weather>() {
-                                                               @Override
-                                                               public void accept(Weather weather) throws Exception {
-                                                                   _weatherCache.insertWeather(weather);
-                                                                   emitter.onSuccess(weather);
-                                                               }
-                                                           },
-                                                        new Consumer<Throwable>() {
-                                                            @Override
-                                                            public void accept(Throwable throwable) throws Exception {
-                                                                emitter.onError(throwable);
-                                                            }
-                                                        },
-                                                        new Action() {
-                                                            @Override
-                                                            public void run() throws Exception {
-                                                                emitter.onComplete();
-                                                            }
-                                                        });
-                                    }
-                                });
-            }
-        });
+    public Maybe<Weather> getWeather(final String city) {
+        return _weatherCache.getWeather(city)
+                .switchIfEmpty(_weatherNetwork.getWeather(city)
+                        .flatMap(new Function<Weather, MaybeSource<Weather>>() {
+                            @Override
+                            public MaybeSource<Weather> apply(Weather weather) throws Exception {
+                                if (weather != null) {
+                                    _weatherCache.insertWeather(weather);
+                                    return Maybe.just(weather);
+                                } else {
+                                    return Maybe.empty();
+                                }
+                            }
+                        }));
     }
 }
